@@ -5,7 +5,7 @@ import java.util.*;
 
 public class Main {
   static int N, M, K, collapsed;
-  static List<int[]> attackers = new ArrayList<>();
+  static int[][] lastAttack;
   static boolean[][] involved;
   static int[][] map;
 
@@ -16,6 +16,7 @@ public class Main {
     M = Integer.parseInt(st.nextToken());
     K = Integer.parseInt(st.nextToken());
     map = new int[N][M];
+    lastAttack = new int[N][M];
     for (int i = 0; i < N; i++) {
       st = new StringTokenizer(br.readLine());
       for (int j = 0; j < M; j++) {
@@ -25,22 +26,29 @@ public class Main {
         }
       }
     }
-    while (K-- > 0) {
+    for(int round = 1; round <= K; round++) {
       involved = new boolean[N][M];
       // 공격자 선정
       int[] attacker = selectAttacker();
       // 공격 대상 선정
       int[] attacked = selectAttacked();
 
-      attackers.add(attacker); // 공격자 리스트에 추가
+      lastAttack[attacker[0]][attacker[1]] = round; // 마지막 공격 시간 업데이트
       map[attacker[0]][attacker[1]] += (N + M); // 공격력 증가
       involved[attacker[0]][attacker[1]] = true;
       involved[attacked[0]][attacked[1]] = true;
 
-      // 공격
+
       boolean isAttacked = laserAttack(attacker, attacked);
       if (!isAttacked) {
         bombAttack(attacker, attacked);
+      }
+
+      // 공격
+      map[attacked[0]][attacked[1]] -= map[attacker[0]][attacker[1]];
+      if (map[attacked[0]][attacked[1]] <= 0) {
+        collapsed++;
+        map[attacked[0]][attacked[1]] = 0;
       }
 
       // 포탑 정비
@@ -75,12 +83,6 @@ public class Main {
   private static void bombAttack(int[] attacker, int[] attacked) {
     int[] dr = {0, 1, 1, 1, 0, -1, -1, -1}; // 우 -> 하 -> 좌 -> 상
     int[] dc = {1, 1, 0, -1, -1, -1, 0, 1};
-    // 공격력만큼 피해
-    map[attacked[0]][attacked[1]] -= map[attacker[0]][attacker[1]];
-    if(map[attacked[0]][attacked[1]] <= 0) {
-      collapsed++;
-      map[attacked[0]][attacked[1]] = 0;
-    }
 
     // 공격력 절반만큼 피해
     int attack = map[attacker[0]][attacker[1]] / 2;
@@ -90,12 +92,24 @@ public class Main {
       int nc = attacked[1] + dc[d];
 
       // 가장자리에서 막히면 반대편으로 넘어가기
-      if (nr < 0) nr = N - 1;
+      if (nr < 0 && nc < 0) {
+        nr = N - 1;
+        nc = M - 1;
+      } else if (nr < 0 && nc >= M) {
+        nr = N - 1;
+        nc = 0;
+      } else if (nr >= N && nc < 0) {
+        nr = 0;
+        nc = M - 1;
+      } else if (nr >= N && nc >= M) {
+        nr = 0;
+        nc = 0;
+      } else if (nr < 0) nr = N - 1;
       else if (nr >= N) nr = 0;
       else if (nc < 0) nc = M - 1;
       else if (nc >= M) nc = 0;
       // 공격자는 해당 공격에 영향을 받지 않음
-      if (nr == attacker[0] && nc == attacker[1]) {
+      if (nr == attacker[0] && nc == attacker[1] || nr == attacked[0] && nc == attacked[1]) {
         continue;
       }
       if (map[nr][nc] > 0) {
@@ -120,7 +134,7 @@ public class Main {
     while (!q.isEmpty()) {
       Node cur = q.poll();
       if (cur.r == attacked[0] && cur.c == attacked[1]) {
-        laserAttack(cur, attacker, attacked);
+        laserAttack(cur, attacker);
         return true;
       }
 
@@ -143,9 +157,7 @@ public class Main {
     return false;
   }
 
-  private static void laserAttack(Node cur, int[] attacker, int[] attacked) {
-    // 공격력만큼 피해
-    map[attacked[0]][attacked[1]] -= map[attacker[0]][attacker[1]];
+  private static void laserAttack(Node cur, int[] attacker) {
     // 공격력 절반만큼 피해
     int attack = map[attacker[0]][attacker[1]] / 2;
     Node node = cur.prev;
@@ -169,36 +181,44 @@ public class Main {
     // 공격력이 가장 높은 포탑 구하기
     int max = Arrays.stream(map).flatMapToInt(Arrays::stream)
             .max().getAsInt();
-    List<int[]> selectedAttackers = new ArrayList<>();
+    List<int[]> selected = new ArrayList<>();
     for (int i = 0; i < N; i++) {
       for (int j = 0; j < M; j++) {
         if (map[i][j] == max) {
-          selectedAttackers.add(new int[]{i, j});
+          selected.add(new int[]{i, j});
         }
       }
     }
     // 공격력이 가장 높은 포탑 선정
-    if (selectedAttackers.size() == 1) {
-      return selectedAttackers.get(0);
+    if (selected.size() == 1) {
+      return selected.get(0);
     }
 
-    for (int i = 0; i < attackers.size(); i++) {
-      // 가장 예전에 공격한 포탑
-      for (int[] selectedAttacker : selectedAttackers) {
-        if (selectedAttacker[0] == attackers.get(i)[0] && selectedAttacker[1] == attackers.get(i)[1]) {
-          return selectedAttacker;
-        }
+    // 가장 예전에 공격한 포탑
+    List<int[]> minLastAttackers = new ArrayList<>();
+    int minLastAttack = Integer.MAX_VALUE;
+    for (int[] s : selected) {
+      minLastAttack = Math.min(minLastAttack, lastAttack[s[0]][s[1]]);
+    }
+    for (int[] selectedAttacker : selected) {
+      if (lastAttack[selectedAttacker[0]][selectedAttacker[1]] == minLastAttack) {
+        minLastAttackers.add(selectedAttacker);
       }
     }
+
+    if (minLastAttackers.size() == 1) {
+      return minLastAttackers.get(0);
+    }
+
     // 행과 열의 합이 가장 작은 포탑 구하기
     int minSum = Integer.MAX_VALUE;
-    for (int[] selectedAttacker : selectedAttackers) {
+    for (int[] selectedAttacker : minLastAttackers) {
       minSum = Math.min(minSum, selectedAttacker[0] + selectedAttacker[1]);
     }
 
     List<int[]> minSumAttackers = new ArrayList<>();
-    for (int[] selectedAttacker : selectedAttackers) {
-      if (selectedAttacker[0] + selectedAttacker[1] == minSum) {
+    for (int[] selectedAttacker : minLastAttackers) {
+      if ((selectedAttacker[0] + selectedAttacker[1]) == minSum) {
         minSumAttackers.add(selectedAttacker);
       }
     }
@@ -229,23 +249,32 @@ public class Main {
     if (selectedAttackers.size() == 1) {
       return selectedAttackers.get(0);
     }
-    for (int i = attackers.size() - 1; i >= 0; i--) {
-      // 가장 최근에 공격한 포탑
-      for (int[] selectedAttacker : selectedAttackers) {
-        if (selectedAttacker[0] == attackers.get(i)[0] && selectedAttacker[1] == attackers.get(i)[1]) {
-          return selectedAttacker;
-        }
+
+    // 가장 최근 공격한 포탑
+    List<int[]> recentAttackers = new ArrayList<>();
+    int maxRecent = 0;
+    for (int[] selectedAttacker : selectedAttackers) {
+      maxRecent = Math.max(maxRecent, lastAttack[selectedAttacker[0]][selectedAttacker[1]]);
+    }
+    for (int[] selectedAttacker : selectedAttackers) {
+      if (lastAttack[selectedAttacker[0]][selectedAttacker[1]] == maxRecent) {
+        recentAttackers.add(selectedAttacker);
       }
     }
+
+    if (recentAttackers.size() == 1) {
+      return recentAttackers.get(0);
+    }
+
     // 행과 열의 합이 가장 큰 포탑 구하기
     int maxSum = 0;
-    for (int[] selectedAttacker : selectedAttackers) {
+    for (int[] selectedAttacker : recentAttackers) {
       maxSum = Math.max(maxSum, selectedAttacker[0] + selectedAttacker[1]);
     }
 
     List<int[]> maxSumAttackers = new ArrayList<>();
-    for (int[] selectedAttacker : selectedAttackers) {
-      if (selectedAttacker[0] + selectedAttacker[1] == maxSum) {
+    for (int[] selectedAttacker : recentAttackers) {
+      if ((selectedAttacker[0] + selectedAttacker[1]) == maxSum) {
         maxSumAttackers.add(selectedAttacker);
       }
     }
