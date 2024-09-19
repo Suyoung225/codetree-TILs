@@ -63,7 +63,7 @@ public class Main {
     int L = Integer.parseInt(st.nextToken());
     for (int i = 0; i < P; i++) {
       if (rabbits[i].pid == pid) {
-        rabbits[i].d += L;
+        rabbits[i].d *= L;
         return;
       }
     }
