@@ -6,12 +6,12 @@ import java.util.*;
 class Rabbit {
   int num;
   int pid;
-  int d;
+  long d;
   // 현재 위치
   int r, c;
   // 점프 횟수
   int jump;
-  int score;
+  long score;
 
   Rabbit(int num, int pid, int d) {
     this.num = num;
@@ -51,7 +51,7 @@ public class Main {
   }
 
   private static void selectBest() {
-    int maxScore = 0;
+    long maxScore = 0;
     for (int i = 0; i < P; i++) {
       maxScore = Math.max(maxScore, rabbits[i].score);
     }
@@ -60,7 +60,7 @@ public class Main {
 
   private static void changeDist() {
     int pid = Integer.parseInt(st.nextToken());
-    int L = Integer.parseInt(st.nextToken());
+    long L = Integer.parseInt(st.nextToken());
     for (int i = 0; i < P; i++) {
       if (rabbits[i].pid == pid) {
         rabbits[i].d *= L;
@@ -100,9 +100,9 @@ public class Main {
 
       List<int[]> locations = new ArrayList<>();
       for (int i = 0; i < 4; i++) {
-        int nr = Math.abs(cur.r + cur.d * dr[i]) % (2 * (N - 1));
+        int nr = (int) (Math.abs(cur.r + cur.d * dr[i]) % (2 * (N - 1)));
         nr = (nr >= N) ? (2 * (N - 1)) - nr : nr;
-        int nc = Math.abs(cur.c + cur.d * dc[i]) % (2 * (M - 1));
+        int nc = (int) (Math.abs(cur.c + cur.d * dc[i]) % (2 * (M - 1)));
         nc = (nc >= M) ? (2 * (M - 1)) - nc : nc;
         locations.add(new int[]{nr, nc});
       }
